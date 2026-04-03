@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <!-- Load MathJax for LaTeX equation rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Two Particles with Chiral-Yukawa Force (p5.js)</title>
+  <!-- Load p5.js library for graphics and interaction -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <style>
+    /* --- Extensive CSS for visuals and UI styling --- */
+    html, body { overflow-x: hidden; }
+    /* Remove spinner arrows in number inputs */
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type=number] {
+      appearance: textfield; -webkit-appearance: textfield; -moz-appearance: textfield;
+    }
+    .pill { display: none !important; }
+    /* Pills and inputs styling */
+    input[type=number] {
+      background: #1b2430 !important;
+      color: #e7edf3 !important;
+      font-family: ui-sans-serif, system-ui, -apple-system !important;
+      font-size: 13px !important; width: 60px !important; margin-left: 8px !important; padding: 3px 8px !important;
+      border-radius: 8px !important; border: 1px solid #2a3646 !important; outline: none !important; text-align: center !important;
+      box-sizing: border-box !important; cursor: text !important;
+    }
+    input[type=number]:focus { border-color: #93c5fd !important; background: #1b2430 !important; }
+    input[type=number] {
+      background: transparent; border: none; color: #e7edf3; font-family: ui-sans-serif, system-ui, -apple-system;
+      font-size: 13px; width: 40px; margin-left: 8px; padding: 0; outline: none; text-align: center;
+    }
+    input[type=number]:focus { background: #1b2430; border-bottom: 1px solid #93c5fd; }
+    html, body {
+      margin: 0; padding: 0;
+      background: #0b0f14; color: #e7edf3;
+      font-family: ui-sans-serif, system-ui, -apple-system;
+      height: 100vh; overflow: hidden;
+    }
+    main { display: flex; height: 100vh; }
+    #canvas-container {
+      flex: 1;
+      border-left: 1px solid #1f2937;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #0b0f14;
+    }
+    #ui {
+      width: 320px; background: #0f1319; border-right: 1px solid #1f2937; display: flex;
+      flex-direction: column; gap: 12px; padding: 15px; box-sizing: border-box; overflow-y: auto;
+    }
+    /* Slim scrollbar styling for the sidebar */
+    #ui::-webkit-scrollbar { width: 6px; }
+    #ui::-webkit-scrollbar-track { background: transparent; }
+    #ui::-webkit-scrollbar-thumb { background: #2a3646; border-radius: 10px; }
+    #ui::-webkit-scrollbar-thumb:hover { background: #3b4a61; }
+    #ui { scrollbar-width: thin; scrollbar-color: #2a3646 transparent; }
+    .panel {
+      background: #10161d; border: 1px solid #1f2937;
+      border-radius: 12px; padding: 10px 12px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    }
+    summary, .panel h3 {
+      margin: 0 0 8px 0;
+      font-size: 14px;
+      letter-spacing: 0.02em;
+      color: #b7c4d2;
+    }
+    summary { cursor: pointer; color: #9ab6d6; }
+    .row {
+      display: flex; align-items: center; gap: 8px; margin: 6px 0; flex-wrap: wrap;
+    }
+    label {
+      font-size: 12px; color: #cfd9e3; white-space: nowrap;
+    }
+    input[type=range] { width: 100%; }
+    button {
+      background: #1f2a37; color: #e7edf3; border: 1px solid #2b3646; border-radius: 10px;
+      padding: 6px 10px; cursor: pointer;
+    }
+    button:hover { background: #273445; }
+    .pill {
+      font-size: 13px; padding: 3px 8px; background: #1b2430;
+      border-radius: 8px; border: 1px solid #2a3646;
+    }
+    a.dl { color: #93c5fd; text-decoration: none; }
+    details { font-size: 12px; color: #d0d8e0; }
+    .energy-values {
+      display: flex; flex-direction: column; gap: 3px; font-size: 13px;
+    }
+    .energy-values span {
+      background: #1b2430; border: 1px solid #2a3646;
+      border-radius: 6px; padding: 2px 6px;
+    }
+    canvas { border-radius: 12px; }
+  </style>
+</head>
+
+<body>
+  <main>
+    <!-- Sidebar with physics equations and controls -->
+    <div id="ui">
+      <div class="panel">
+        <h3>Chiral–Yukawa Force</h3>
+        <p>
+        <div class="row"><span class="row">\( \vec{F} = F_r \hat{r} \;+\; F_c \hat{t} \)</span></div>
+        </p>
+        <div class="row"><span class="row">\( F_r = -\dfrac{k m_1 m_2}{r^2} \,\Big[1 - \beta e^{-(r/r_0)^2}\Big] \)</span></div>
+        <div class="row"><span class="row">\( F_c = \dfrac{\sigma m_1 m_2}{r^2}\cdot\big(1-e^{-r^2/\epsilon^2}\big) \)</span></div>
+        <details>
+          <summary>What does this mean?</summary>
+          <p>
+            • At <b>large distances</b>, the force is attractive, like gravity. <br />
+            • At <b>short distances</b>, the Gaussian notch makes the radial part repulsive (prevents collision). <br />
+            • The <b>tangential chiral term</b> (\(σ\)) twists orbits, injecting/removing angular momentum; the taper
+            multiplier ensures the tangential part stays finite as \(r\to0\). <br />
+            This force is non-conservative, so <i>energy isn’t fixed</i>.
+          </p>
+        </details>
+      </div>
+
+      <!-- Simulation controls (sliders, inputs, buttons) -->
+      <div class="panel">
+        <details open>
+          <summary>Controls</summary>
+          <!-- Each parameter gets a slider and number input (synchronized in JS) -->
+          <div class="row">
+            <label>k</label>
+            <input id="k" type="range" min="10" max="300" value="120" step="1">
+            <input id="kInput" type="number" min="10" max="300" value="120" step="1" style="width:60px; margin-left:8px;">
+            <span id="kVal" class="pill"></span>
+          </div>
+          <div class="row">
+            <label>β</label>
+            <input id="beta" type="range" min="0.1" max="100.0" value="5.0" step="0.1">
+            <input id="betaInput" type="number" min="0.1" max="1000.0" value="5.0" step="0.1" style="width:60px; margin-left:8px;">
+            <span id="betaVal" class="pill"></span>
+          </div>
+          <div class="row">
+            <label>r₀</label>
+            <input id="r0" type="range" min="1" max="200" value="90" step="1">
+            <input id="r0Input" type="number" min="1" max="200" value="90" step="1" style="width:60px; margin-left:8px;">
+            <span id="r0Val" class="pill"></span>
+          </div>
+          <div class="row">
+            <label>σ (chiral)</label>
+            <input id="sigma" type="range" min="-200" max="200" value="60" step="1">
+            <input id="sigmaInput" type="number" min="-200" max="200" value="60" step="1" style="width:60px; margin-left:8px;">
+            <span id="sigmaVal" class="pill"></span>
+          </div>
+          <div class="row">
+            <label>ε (taper)</label>
+            <input id="eps" type="range" min="0.1" max="100" value="6" step="0.1">
+            <input id="epsInput" type="number" min="0.1" max="100" value="6" step="0.1" style="width:60px; margin-left:8px;">
+            <span id="epsVal" class="pill"></span>
+          </div>
+          <div class="row">
+            <label>Δt</label>
+            <input id="dt" type="range" min="0.1" max="7.0" value="1.0" step="0.1">
+            <input id="dtInput" type="number" min="0.1" max="7.0" value="1.0" step="0.1" style="width:60px; margin-left:8px;">
+            <span id="dtVal" class="pill"></span>
+          </div>
+          <div class="row">
+            <label>Zoom</label>
+            <input id="zoom" type="range" min="0.1" max="5" value="1.0" step="0.05">
+            <input id="zoomInput" type="number" min="0.1" max="5" value="1.0" step="0.05" style="width:60px; margin-left:8px;">
+            <span id="zoomVal" class="pill"></span>
+          </div>
+          <!-- Buttons for controlling the simulation -->
+          <div class="row" style="gap:12px">
+            <button id="toggle">Play</button>
+            <button id="resetParticles">Reset Particles</button>
+            <button id="resetAll">Reset All Controls</button>
+            <button id="record">Record</button>
+            <a id="download" class="dl" style="display:none" download="two-particles.webm">Download video</a>
+          </div>
+        </details>
+      </div>
+      <!-- Displays kinetic, potential, and total energy -->
+      <div class="panel">
+        <h3>Energies</h3>
+        <div class="energy-values">
+          <span id="Etotal">Total E = …</span>
+          <span id="Ek">Kinetic T = …</span>
+          <span id="Ep">Potential V = …</span>
+        </div>
+        <details>
+          <summary>Why isn’t energy constant?</summary>
+          <p>
+            In physics, <b>energy is conserved only for conservative forces</b> (derived from a potential). <br /><br />
+            The <b>radial force</b> is mostly conservative — like gravity, with a repulsive Gaussian core. <br /><br />
+            But the <b>chiral tangential force</b> (\(F_c\)) is <i>not</i> conservative:
+            it applies sideways pushes that either speed up or slow down particles. <br /><br />
+            This means it is constantly <b>doing work</b>, adding/removing energy and angular momentum. <br /><br />
+            The simulation is designed this way intentionally, to explore <b>non-conservative exotic dynamics</b>.
+          </p>
+        </details>
+      </div>
+    </div>
+    <!-- The actual p5.js rendering canvas goes here -->
+    <div id="canvas-container"></div>
+  </main>
+
+  <script>
+    // --- Simulation state and configuration ---
+
+    // Stores all adjustable system parameters
+    let params = { k: 120, beta: 5.0, r0: 90, sigma: 60, eps: 6.0, dt: 1.0, zoom: 1.0 };
+
+    // Whether the simulation is currently running
+    let running = false;
+    let canvas, mediaRecorder, recordedChunks = [];
+
+    // Each particle keeps mass, position, velocity, and visual trail history
+    let p1 = { m: 2, pos: null, vel: null, trail: [] };
+    let p2 = { m: 2, pos: null, vel: null, trail: [] };
+    const TRAIL_LEN = 200; // Max length of visual history for trails
+
+    // --- Core Simulation & Control Functions ---
+
+    // Reset the positions, velocities, and trails of the two particles
+    function resetParticles() {
+      // Particle 1: left, Particle 2: right; initial small velocities in y
+      p1.pos = createVector(width * 0.35, height * 0.5);
+      p2.pos = createVector(width * 0.65, height * 0.5);
+      p1.vel = createVector(0, -0.7);
+      p2.vel = createVector(0, 0.7);
+      p1.trail = [];
+      p2.trail = [];
+      recordedChunks = []; // Clear pending video data
+      document.getElementById("download").style.display = "none";
+    }
+
+    // Resets all simulation options (sliders etc) and particles to default values
+    function resetAll() {
+      const defaults = { k: 120, beta: 5.0, r0: 90, sigma: 60, eps: 6.0, dt: 1.0, zoom: 1.0 };
+      for (const key in defaults) {
+        const val = defaults[key];
+        document.getElementById(key).value = val;
+        document.getElementById(key + "Input").value = val;
+        params[key] = val;
+      }
+      resetParticles();
+    }
+
+    // Used to reset state just at startup
+    function resetSystem() {
+      resetParticles();
+    }
+
+    // --- p5.js main setup, runs once at page load ---
+    function setup() {
+      canvas = createCanvas(900, 600);
+      canvas.parent('canvas-container');
+      resetSystem();
+
+      // Set up event handlers and UI linkage for all slider/input parameters
+      const ids = ["k", "beta", "r0", "sigma", "eps", "dt", "zoom"];
+      for (const id of ids) {
+        const slider = document.getElementById(id);
+        const input = document.getElementById(id + "Input");
+
+        // Format certain parameters as decimals; others as integers/strings
+        const format = (v) => {
+          if (["beta", "zoom", "dt"].includes(id)) return parseFloat(v).toFixed(1);
+          if (id === "eps") return parseFloat(v).toFixed(2);
+          return String(v);
+        };
+
+        // Ensures UI and params are always in sync for each input
+        const setValue = (v) => {
+          const num = parseFloat(v);
+          if (isNaN(num)) return;
+          params[id] = num;
+          if (slider && slider.value !== String(num)) slider.value = num;
+          if (input && input.value !== String(num)) input.value = format(num);
+        };
+
+        if (slider) slider.addEventListener("input", () => setValue(slider.value));
+        if (input) input.addEventListener("input", () => setValue(input.value));
+        if (slider) setValue(slider.value);
+      }
+
+      // Attach core event handlers for each control button
+      document.getElementById("resetParticles").onclick = resetParticles;
+      document.getElementById("resetAll").onclick = resetAll;
+      document.getElementById("toggle").onclick = () => {
+        running = !running;
+        document.getElementById("toggle").textContent = running ? "Pause" : "Play";
+      };
+      document.getElementById("record").onclick = toggleRecording;
+    }
+
+    // --- p5.js main animation/render function, runs every frame ---
+    function draw() {
+      background(11, 15, 20); // Set scene background
+      push();
+
+      // Center coordinate system and apply zoom factor
+      translate(width / 2, height / 2);
+      scale(params.zoom);
+      translate(-width / 2, -height / 2);
+
+      // If running, take two sub-steps per frame for stability (substeps can be increased for accuracy if needed)
+      if (running) {
+        const sub = 2;
+        const dt = params.dt / sub;
+        for (let i = 0; i < sub; i++) step(dt);
+      }
+
+      // Update trails with latest positions
+      p1.trail.push(p1.pos.copy());
+      p2.trail.push(p2.pos.copy());
+      if (p1.trail.length > TRAIL_LEN) p1.trail.shift();
+      if (p2.trail.length > TRAIL_LEN) p2.trail.shift();
+
+      // Draw trails as faded lines for each particle
+      noFill(); strokeWeight(2);
+      stroke(120, 170, 255, 140); beginShape(); for (const v of p1.trail) vertex(v.x, v.y); endShape();
+      stroke(255, 145, 120, 140); beginShape(); for (const v of p2.trail) vertex(v.x, v.y); endShape();
+
+      // Draw particle 1 and 2 as colored circles
+      noStroke(); fill(160, 200, 255); circle(p1.pos.x, p1.pos.y, 14);
+      fill(255, 180, 160); circle(p2.pos.x, p2.pos.y, 14);
+
+      // Draw center of mass as a small faded circle
+      const R = p5.Vector.add(p5.Vector.mult(p1.pos, p1.m), p5.Vector.mult(p2.pos, p2.m)).div(p1.m + p2.m);
+      fill(220, 220, 240, 140); circle(R.x, R.y, 6);
+
+      pop();
+
+      // Display up-to-date energy values in the UI panel
+      const T = kineticEnergy();
+      const V = potentialEnergy();
+      const E = T + V;
+      document.getElementById("Etotal").textContent = `Total E ≈ ${E.toFixed(1)}`;
+      document.getElementById("Ek").textContent = `Kinetic T ≈ ${T.toFixed(1)}`;
+      document.getElementById("Ep").textContent = `Potential V ≈ ${V.toFixed(1)}`;
+    }
+
+    // --- Physics Calculation Functions ---
+
+    // Compute the force between two particles, including radial & chiral (tangential) Yukawa components
+    function pairForces(a, b) {
+      const r = p5.Vector.sub(a.pos, b.pos);
+      const dist = Math.max(r.mag(), 1e-6); // Avoid division by zero
+      const rhat = p5.Vector.div(r, dist);   // Unit radial vector
+      const that = createVector(-rhat.y, rhat.x); // Unit tangential (perpendicular) vector
+
+      // Gravitational-like radial force, with Gaussian repulsive "notch"
+      const grav = -params.k * a.m * b.m / (dist * dist);
+      const notch = 1.0 - params.beta * Math.exp(-(dist * dist) / (params.r0 * params.r0));
+      const Fr = grav * notch;
+
+      // Chiral tangential force, smoothly regularized at short distances by "taper"
+      const eps = Math.max(1e-6, params.eps);
+      const S = 1.0 - Math.exp(-(dist * dist) / (eps * eps));
+      const Fc = params.sigma * a.m * b.m / (dist * dist) * S;
+
+      // Total force is sum of radial and tangential components
+      return p5.Vector.mult(rhat, Fr).add(p5.Vector.mult(that, Fc));
+    }
+
+    // Velocity Verlet integration step for two particles in 2D
+    function step(dt) {
+      const F12 = pairForces(p1, p2);          // Force on p1 due to p2
+      const F21 = p5.Vector.mult(F12, -1);     // Newton's Third Law: equal and opposite
+      const a1 = p5.Vector.div(F12, p1.m);     // Acceleration of p1
+      const a2 = p5.Vector.div(F21, p2.m);     // Acceleration of p2
+     
+      p1.vel.add(p5.Vector.mult(a1, 0.5 * dt));
+      p2.vel.add(p5.Vector.mult(a2, 0.5 * dt));
+      
+      p1.pos.add(p5.Vector.mult(p1.vel, dt));
+      p2.pos.add(p5.Vector.mult(p2.vel, dt));
+      
+      const F12n1 = pairForces(p1, p2);
+      const F21n1 = p5.Vector.mult(F12n1, -1);
+      const a1n1 = p5.Vector.div(F12n1, p1.m);
+      const a2n1 = p5.Vector.div(F21n1, p2.m);
+
+      p1.vel.add(p5.Vector.mult(a1n1, 0.5 * dt));
+      p2.vel.add(p5.Vector.mult(a2n1, 0.5 * dt));
+    }
+
+    // Return the total kinetic energy (sum for both particles)
+    function kineticEnergy() {
+      return 0.5 * p1.m * p1.vel.magSq() + 0.5 * p2.m * p2.vel.magSq();
+    }
+
+    // Evaluate the conservative part of the potential energy by integrating the radial "notch"
+    function potentialEnergy() {
+      const r = p5.Vector.sub(p1.pos, p2.pos).mag();
+      const steps = 20; 
+      const r0_param = max(1e-3, params.r0);
+      let Vnotch = 0;
+      let R = max(1, r);
+      let dr = R / steps;
+      for (let s = 1; s <= steps; s++) {
+        const rr = s * dr;
+        const Fr_notch = +params.k * p1.m * p2.m / (rr * rr) * (params.beta * Math.exp(-(rr * rr) / (r0_param * r0_param)));
+        Vnotch += Fr_notch * dr;
+      }
+      return (-params.k * p1.m * p2.m / r) + Vnotch;
+    }
+
+    // --- Utility & Event Functions ---
+
+    // Start or stop the media recorder for the canvas, and update UI accordingly
+    async function toggleRecording() {
+      const btn = document.getElementById("record");
+      if (!mediaRecorder || mediaRecorder.state === "inactive") {
+        recordedChunks = [];
+        const stream = document.querySelector("canvas").captureStream(60);
+        mediaRecorder = new MediaRecorder(stream, { mimeType: "video/webm;codecs=vp9" });
+        mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+        mediaRecorder.onstop = saveRecording;
+        mediaRecorder.start();
+        btn.textContent = "Stop Recording";
+      } else {
+        mediaRecorder.stop();
+        btn.textContent = "Record";
+      }
+    }
+
+    // Save the recorded video so the user can download it
+    function saveRecording() {
+      const blob = new Blob(recordedChunks, { type: "video/webm" });
+      const url = URL.createObjectURL(blob);
+      const a = document.getElementById("download");
+      a.href = url;
+      a.style.display = "inline-block";
+    }
+
+    // Mouse wheel event: zooms in/out if mouse is over the canvas
+    function mouseWheel(event) {
+      if (mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height) {
+        let sensitivity = 0.0015;
+        params.zoom *= (1 - event.delta * sensitivity);
+        params.zoom = constrain(params.zoom, 0.1, 5);
+
+        document.getElementById("zoom").value = params.zoom;
+        document.getElementById("zoomInput").value = params.zoom.toFixed(2);
+
+        return false; // Prevents page from scrolling
+      }
+    }
+
+    // Clicking inside the canvas toggles simulation running status (play/pause)
+    function mousePressed() {
+      if (mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height) {
+        running = !running;
+        document.getElementById("toggle").textContent = running ? "Pause" : "Play";
+      }
+    }
+  </script>
+</body>
+</html>
